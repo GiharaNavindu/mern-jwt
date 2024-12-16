@@ -47,4 +47,58 @@ const userSchema = new mongoose.Schema({
         await User.create({username,password:hashedPassword});
         res.status(201).json("User created successfully");
     }
-  })
+    catch{
+        res.status(400).json("Username already exists");
+    }
+  });
+
+
+
+  //signin
+  app.post("/signin", async (req, res) => {  
+    const { username, password } = req.body; // Corrected 'passowrd' to 'password'  
+
+    // Check if user exists  
+    const user = await User.findOne({ username });  
+    if (!user) {  
+        return res.status(404).json("User not found");  
+    }  
+
+    // Validate password  
+    const isPasswordValid = await bcrypt.compare(password, user.password); // 'password' was correctly used but needed to ensure consistency  
+    if (!isPasswordValid) {  
+        return res.status(400).json("Invalid Password"); // Corrected spelling from 'Invlaid' to 'Invalid'  
+    }  
+
+    // Create JWT token  
+    const token = jwt.sign(  
+        {  
+            id: user._id,  
+        },  
+        JWT_SECRET,  
+        {  
+            expiresIn: "1d",  
+        }  
+    );  
+
+    res.json({ token });  
+});
+
+
+
+//dashboard
+
+app.get("/dashboard", async (req, res) => {
+    const token = req.headers["authorization"];
+    if (!token) return res.status(403).json({ error: "Access denied" });
+  
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      res.json({ message: "Welcome to the dashboard!", userId: decoded.id });
+    } catch (err) {
+      res.status(401).json({ error: "Invalid token" });
+    }
+  });
+  
+  // Start server
+  app.listen(5000, () => console.log("Server running on port 5000"));

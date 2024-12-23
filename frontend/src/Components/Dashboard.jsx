@@ -1,8 +1,10 @@
 // src/Dashboard.js
 import axios from "axios";
 import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import { logout } from "../Redux/authSlice";
 
 const Container = styled.div`
   display: flex;
@@ -43,25 +45,19 @@ const Button = styled.button`
 
 const Dashboard = () => {
   const [message, setMessage] = useState("");
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Check if the user is authenticated on component mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      navigate("/signin"); // Redirect to SignIn if no token is found
+    if (!isAuthenticated) {
+      navigate("/signin");
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const fetchDashboard = async () => {
     try {
       const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Session expired. Please sign in again.");
-        navigate("/signin");
-        return;
-      }
-
       const { data } = await axios.get("http://localhost:5000/dashboard", {
         headers: { Authorization: token },
       });
@@ -72,8 +68,8 @@ const Dashboard = () => {
   };
 
   const handleSignout = () => {
-    localStorage.removeItem("token"); // Clear the token
-    navigate("/signin"); // Redirect to SignIn page
+    dispatch(logout()); // Dispatch logout action
+    navigate("/signin");
   };
 
   return (

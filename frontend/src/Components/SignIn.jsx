@@ -1,8 +1,10 @@
 // src/SignIn.js
 import axios from "axios";
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import { Navigate } from "react-router-dom";
 import styled from "styled-components";
+import { login } from "../Redux/authSlice";
 
 const Container = styled.div`
   display: flex;
@@ -49,6 +51,7 @@ const SignIn = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
+  const dispatch = useDispatch(); // Initialize useDispatch
 
   const handleSignin = async (e) => {
     e.preventDefault();
@@ -58,9 +61,10 @@ const SignIn = () => {
         password,
       });
       localStorage.setItem("token", data.token);
+      dispatch(login()); // Dispatch Redux login action
       setToken(data.token);
     } catch (err) {
-      alert(err.response.data.error);
+      alert(err.response?.data?.error || "An error occurred");
     }
   };
 

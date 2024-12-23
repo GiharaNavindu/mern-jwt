@@ -1,7 +1,9 @@
 // src/SignUp.js
 import axios from "axios";
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
 import styled from "styled-components";
+import { login } from "../Redux/authSlice"; // Import the login action
 
 const Container = styled.div`
   display: flex;
@@ -47,17 +49,22 @@ const Button = styled.button`
 const SignUp = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const dispatch = useDispatch(); // Initialize useDispatch
 
   const handleSignup = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/auth/signup", {
+      const { data } = await axios.post("http://localhost:5000/auth/signup", {
         username,
         password,
       });
-      alert("User  signed up successfully");
+      alert("User signed up successfully");
+
+      // Optional: Automatically log the user in after signup
+      localStorage.setItem("token", data.token); // Assuming an immediate token is provided
+      dispatch(login()); // Dispatch Redux login action
     } catch (err) {
-      alert(err.response.data.error);
+      alert(err.response?.data?.error || "An error occurred during sign up");
     }
   };
 

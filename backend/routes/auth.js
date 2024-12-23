@@ -1,52 +1,47 @@
 const express = require("express");
-const bcrypt  = require("bcryptjs");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../model/User");
 const router = express.Router();
+const { JWT_SECRET, REFRESH_TOKEN_SECRET } = require("../config");
 
+// Generate Tokens
+const generateAccessToken = (userId) => jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: "15m" });
+const generateRefreshToken = (userId) => jwt.sign({ id: userId }, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 
-const{JWT_SECRET}= require("../config/keys");
+// Signin
+router.post("/signin", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (!user) return res.status(404).json({ error: "User not found" });
 
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) return res.status(401).json({ error: "Invalid credentials" });
 
-//Signup
-router.post("/signup",async(req,res)=>{
-    const {username,password} =req.body;
-    const hashPassword = await bcrypt.hash(password,10);
-    try{
-        await User.create({username,password:hashPassword});
-        res.status(201).json("User created successfully");
-        console.log("User created successfully");
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
 
-    }
-    catch{
-        res.status(400).json("Username already exists");
-        console.log("Username already exists");
-    }
-})
+  user.refreshToken = refreshToken;
+  await user.save();
 
-
-//Signin
-
-router.post("/signin",async(req,res)=>{
-    const {username,password} = req.body;
-    const user =  await  User.findOne({username});
-    if(!user){
-        return res.status(404).json("User not found");
-        console.log("User not found");
-
-    }
-
-    const isPasswordValid = await bcrypt.compare(password,user.password);
-    if(!isPasswordValid){
-        return res.status(400).json("Invalid credentials");
-        console.log("Invalid credentials");
-
-    
-    }
-
-    const token = jwt.sign({id:user._id},JWT_SECRET),{expiresIn:"1h"};
-    re.json({token});
+  res.json({ accessToken, refreshToken });
 });
 
+// Refresh Token
+router.post("/refresh-token", async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(403).json({ error: "Refresh token required" });
 
-module.exports = router;
+  try {
+    const decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
+
+    const newAccessToken = generateAccessToken(user._id);
+    res.json({ accessToken: newAccessToken });
+  } catch (err) {
+    res.status(403).json({ error: "Invalid refresh token" });
+  }
+});

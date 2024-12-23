@@ -1,7 +1,7 @@
 const express =  require("express");
 const router  = express.Router();
 const jwt  =  require("jsonwebtoken");
-const {JWT_SECRET} = require("../config/keys");
+const {JWT_SECRET} = require("../config");
 
 router.get("dashboard",async(req,res)=>{
     const token = req.headers["authorization"];

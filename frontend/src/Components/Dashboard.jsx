@@ -53,14 +53,59 @@ const Dashboard = () => {
     if (!isAuthenticated) {
       navigate("/signin");
     }
-  }, [isAuthenticated, navigate]);
+
+    // Setup Axios interceptor for token refresh
+    const requestInterceptor = axios.interceptors.request.use((request) => {
+      const accessToken = localStorage.getItem("token");
+      if (accessToken) {
+        request.headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+      return request;
+    });
+
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+
+          const refreshToken = localStorage.getItem("refreshToken");
+          try {
+            const { data } = await axios.post(
+              "http://localhost:5000/auth/refresh",
+              {
+                token: refreshToken,
+              }
+            );
+            localStorage.setItem("token", data.token);
+            axios.defaults.headers.common[
+              "Authorization"
+            ] = `Bearer ${data.token}`;
+
+            // Retry the original request with the new token
+            return axios(originalRequest);
+          } catch (refreshError) {
+            console.log("Refresh token failed:", refreshError);
+            dispatch(logout()); // Logout if refresh fails
+            navigate("/signin");
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup on unmount
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [dispatch, isAuthenticated, navigate]);
 
   const fetchDashboard = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const { data } = await axios.get("http://localhost:5000/dashboard", {
-        headers: { Authorization: token },
-      });
+      const { data } = await axios.get("http://localhost:5000/dashboard");
       setMessage(data.message);
     } catch (err) {
       alert(err.response?.data?.error || "An error occurred");
@@ -68,7 +113,7 @@ const Dashboard = () => {
   };
 
   const handleSignout = () => {
-    dispatch(logout()); // Dispatch logout action
+    dispatch(logout());
     navigate("/signin");
   };
 

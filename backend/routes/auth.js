@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const User = require("../model/User");
 const router = express.Router();
 const { JWT_SECRET, REFRESH_TOKEN_SECRET } = require("../config");
 
@@ -45,3 +45,6 @@ router.post("/refresh-token", async (req, res) => {
     res.status(403).json({ error: "Invalid refresh token" });
   }
 });
+
+
+module.exports = router;
